@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 from hydra.utils import instantiate
 
 
-@hydra.main(version_base=None, config_path="./conf/", config_name="config")
+@hydra.main(config_path="./conf/", config_name="config")
 def main(cfg):
     pl.seed_everything(cfg.seed)
     assert os.path.exists(cfg.checkpoint), f"Checkpoint {cfg.checkpoint} does not exist"
