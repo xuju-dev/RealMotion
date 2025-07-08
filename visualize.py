@@ -96,7 +96,7 @@ scenario_ids = features['scenario_id']
 
 # === MAP VISUALIZATION===
 sample_idx = 0
-agent_idx = 4
+agent_idx = 2
 scenario_id = scenario_ids[sample_idx]
 
 # Load scenario for visualization
