@@ -109,7 +109,7 @@ angles = features['theta']  # [B]
 # === MAP VISUALIZATION===
 # sample_idx = 3
 # agent_idx = 5
-B = 6
+B = 16
 all_agents_bool = False
 for sample_idx in range(B):
     print(f"### BATCH {sample_idx} ###\n")
@@ -135,10 +135,6 @@ for sample_idx in range(B):
 
         if preds is not None:
             # === TARGET VISUALIZATION ===
-            # t_mask = extra['target_mask'][sample_idx, agent_idx]  # [60]
-            # target = extra['target'][sample_idx, agent_idx][t_mask]  # [60, 2]
-            # target = local_to_global(target, center=centers[sample_idx], angle=angles[sample_idx])
-            # ax.plot(target[:, 0].cpu().numpy(), target[:, 1].cpu().numpy(), 'g-', label='Target')
             target_trajectories = extract_targets(labels, batch_idx=sample_idx, all_agents=all_agents_bool, agent_idx=agent_idx)
             _plot_polylines(target_trajectories, line_width=1, color='green')
             # Give plotted preds a label
