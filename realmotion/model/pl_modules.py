@@ -117,7 +117,7 @@ class BaseLightningModule(pl.LightningModule):
         )
 
     def on_test_start(self) -> None:
-        save_dir = Path('./submission')
+        save_dir = Path('/dev_ws/src/tam_deep_prediction/models/RealMotion/RealMotion/submission')
         save_dir.mkdir(exist_ok=True)
         self.submission_handler = SubmissionAv2(
             save_dir=save_dir
