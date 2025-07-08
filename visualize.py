@@ -1,137 +1,149 @@
-# Code copied from https://github.com/argoverse/av2-api/blob/main/tutorials/generate_forecasting_scenario_visualizations.py (10.06.2025)
-# <Copyright 2022, Argo AI, LLC. Released under the MIT license.>
-"""Script to generate dynamic visualizations from a directory of Argoverse scenarios."""
-
-from enum import Enum, unique
+import os
 from pathlib import Path
-from random import choices
-from typing import Final
+import torch
 
-import click
-from joblib import Parallel, delayed
-from rich.progress import track
-
-from av2.datasets.motion_forecasting import scenario_serialization
-from av2.datasets.motion_forecasting.viz.scenario_visualization import (
-    visualize_scenario,
+from models.RealMotion.RealMotion.vis_utils import (
+    AV2MapVisualizer,
+    load_model,
+    load_scenario_and_map,
+    local_to_global,
+    extract_predicted_traj
 )
-from av2.map.map_api import ArgoverseStaticMap
 
-_DEFAULT_N_JOBS: Final[int] = -2  # Use all but one CPUs
+from av2.datasets.motion_forecasting.viz.scenario_visualization import (
+    _plot_actor_tracks,
+    _plot_polylines
+)
 
+import numpy as np
+import matplotlib.pyplot as plt
 
-@unique
-class SelectionCriteria(str, Enum):
-    """Valid criteria used to select Argoverse scenarios for visualization."""
-
-    FIRST = "first"
-    RANDOM = "random"
-
-
-def generate_scenario_visualizations(
-    argoverse_scenario_dir: Path,
-    viz_output_dir: Path,
-    num_scenarios: int,
-    selection_criteria: SelectionCriteria,
-    *,
-    debug: bool = False,
-) -> None:
-    """Generate and save dynamic visualizations for selected scenarios within `argoverse_scenario_dir`.
+def plot_trajectories_on_map(
+    ax,
+    features,
+    preds=None,
+    sample_idx=0,
+    agent_idx=0,
+    title="Trajectories on Map"
+):
+    """
+    Plot agent trajectories on top of the lane map.
 
     Args:
-        argoverse_scenario_dir: Path to local directory where Argoverse scenarios are stored.
-        viz_output_dir: Path to local directory where generated visualizations should be saved.
-        num_scenarios: Maximum number of scenarios for which to generate visualizations.
-        selection_criteria: Controls how scenarios are selected for visualization.
-        debug: Runs preprocessing in single-threaded mode when enabled.
+        ax: matplotlib axis where the lane map is plotted on
+        features: dict of batched features
+        preds: prediction dict (optional, from model output)
+        sample_idx: index in batch to plot
+        agent_idx: which agent (0–5)
+        plot_pred: whether to show model prediction
+        title: plot title
     """
-    Path(viz_output_dir).mkdir(parents=True, exist_ok=True)
-    all_scenario_files = sorted(argoverse_scenario_dir.rglob("*.parquet"))
-    scenario_file_list = (
-        all_scenario_files[:num_scenarios]
-        if selection_criteria == SelectionCriteria.FIRST
-        else choices(all_scenario_files, k=num_scenarios)
-    )  # Ignoring type here because type of "choice" is partially unknown.
+    # === Extract agent info ===
+    x_pos = features['x_positions'][sample_idx, agent_idx]     # [30, 2]
+    x_mask = features['x_valid_mask'][sample_idx, agent_idx]   # [30]
 
-    # Build inner function to generate visualization for a single scenario.
-    def generate_scenario_visualization(scenario_path: Path) -> None:
-        """Generate and save dynamic visualization for a single Argoverse scenario.
+    center = preds['memory_dict']['origin'][sample_idx]
+    angle = preds['memory_dict']['theta'][-1]  # (last angle)
 
-        NOTE: This function assumes that the static map is stored in the same directory as the scenario file.
+    # Convert past to global
+    past_traj_local = x_pos[x_mask.bool()]    # [T1, 2]
+    past_traj = local_to_global(past_traj_local, center, angle).cpu().numpy()
+    ax.plot(past_traj[:, 0], past_traj[:, 1], color='blue', label='Past')
 
-        Args:
-            scenario_path: Path to the parquet file corresponding to the Argoverse scenario to visualize.
-        """
-        scenario_id = scenario_path.stem.split("_")[-1]
-        static_map_path = (
-            scenario_path.parents[0] / f"log_map_archive_{scenario_id}.json"
-        )
-        viz_save_path = viz_output_dir / f"{scenario_id}.mp4"
-
-        scenario = scenario_serialization.load_argoverse_scenario_parquet(scenario_path)
-        static_map = ArgoverseStaticMap.from_json(static_map_path)
-        visualize_scenario(scenario, static_map, viz_save_path)
-
-    # Generate visualization for each selected scenario in parallel (except if running in debug mode)
-    if debug:
-        for scenario_path in track(scenario_file_list):
-            generate_scenario_visualization(scenario_path)
+    # Prediction
+    if preds is None:
+        raise ValueError("Predictions are required to plot future trajectories.")
     else:
-        Parallel(n_jobs=_DEFAULT_N_JOBS)(
-            delayed(generate_scenario_visualization)(scenario_path)
-            for scenario_path in track(scenario_file_list)
-        )
+        y_hat = preds['y_hat'][sample_idx, agent_idx]  # [60, 2]
+        # pred_traj = local_to_global(y_hat, center, angle).cpu().numpy()
+        global_y_hat = preds['memory_dict']['glo_y_hat'][sample_idx, agent_idx]  # [60, 2]
+        global_y_hat = local_to_global(global_y_hat, center)
+        pred_traj = global_y_hat.cpu().numpy()
+        ax.plot(pred_traj[:, 0], pred_traj[:, 1], 'r--', label=f'Predicted Agent {agent_idx}')
 
+# === CONFIGURATION ===
+dataset_path = "/dev_ws/src/tam_deep_prediction/data/raceverse-small-v2"  # path to original dataset
 
-@click.command(help="Generate visualizations from a directory of Argoverse scenarios.")
-@click.option(
-    "--argoverse-scenario-dir",
-    required=True,
-    help="Path to local directory where Argoverse scenarios are stored.",
-    type=click.Path(exists=True),
-)
-@click.option(
-    "--viz-output-dir",
-    required=True,
-    help="Path to local directory where generated visualizations should be saved.",
-    type=click.Path(),
-)
-@click.option(
-    "-n",
-    "--num-scenarios",
-    default=100,
-    help="Maximum number of scenarios for which to generate visualizations.",
-    type=int,
-)
-@click.option(
-    "-s",
-    "--selection-criteria",
-    default="first",
-    help="Controls how scenarios are selected for visualization - either the first available or at random.",
-    type=click.Choice(["first", "random"], case_sensitive=False),
-)
-@click.option(
-    "--debug",
-    is_flag=True,
-    default=False,
-    help="Runs preprocessing in single-threaded mode when enabled.",
-)
-def run_generate_scenario_visualizations(
-    argoverse_scenario_dir: str,
-    viz_output_dir: str,
-    num_scenarios: int,
-    selection_criteria: str,
-    debug: bool,
-) -> None:
-    """Click entry point for generation of Argoverse scenario visualizations."""
-    generate_scenario_visualizations(
-        Path(argoverse_scenario_dir),
-        Path(viz_output_dir),
-        num_scenarios,
-        SelectionCriteria(selection_criteria.lower()),
-        debug=debug,
-    )
+# need to use absolute paths to work
+PROJECT_ROOT = Path(__file__).resolve().parent  # /home/xuju/tam_deep_prediction/models/RealMotion/RealMotion
+# TAM_DEEP_PREDICTION_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
+# CONFIG_PATH = os.path.join(PROJECT_ROOT, "conf/model/RealMotion.yaml")
+CHECKPOINT_PATH = os.path.join(PROJECT_ROOT, "outputs/RealMotion-av2_3frame_30his/20250609-185705/checkpoints/epoch_71-minADE6_1.1839549541473389.ckpt")
+epoch = 71
 
-if __name__ == "__main__":
-    run_generate_scenario_visualizations()
+MODE = 1  # TODO: for naming convention (0: only map or 1: with trajectory)
+if MODE == 0:
+    task = "map"
+elif MODE == 1:
+    task = "predict"
+
+# === LOAD MODEL ===
+split = 'test'
+loader, model = load_model(checkpoint_path=CHECKPOINT_PATH, split=split)
+
+features, labels, extra = next(iter(loader))
+
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
+model.to(device)
+
+features = {k: v.to(device) if torch.is_tensor(v) else v for k, v in features.items()}
+labels = {k: v.to(device) if torch.is_tensor(v) else v for k, v in labels.items()}
+extra = {k: v.to(device) if torch.is_tensor(v) else v for k, v in extra.items()}
+
+scenario_ids = features['scenario_id']
+
+# === MAP VISUALIZATION===
+sample_idx = 0
+agent_idx = 4
+scenario_id = scenario_ids[sample_idx]
+
+# Load scenario for visualization
+print(f"Loading scenario {scenario_id}...")
+scenario, static_map = load_scenario_and_map(scenario_id, split, dataset_path)
+
+_, ax = plt.subplots(figsize=(12, 12))
+ax.axis('equal')
+ax.set_title('{}-{}-agent{}'.format(scenario_id, task, agent_idx))
+ax.legend()
+
+# Visualizing map
+print("Visualizing map...")
+AV2MapVisualizer(dataset_path=dataset_path).show_map(ax, split=split, seq_id=scenario_id)
+
+print("Plotting actor tracks...")
+_plot_actor_tracks(ax, scenario, timestep=60)
+
+# === PREDICT ===
+if MODE == 1:
+    model.eval()
+    with torch.no_grad():
+        print("Predicting...\n")
+        preds = model(features)
+
+# === TRAJETORY VISUALIZATION ===
+if preds is not None:
+    predicted_trajectories = extract_predicted_traj(preds, batch_idx=sample_idx, all_agents=False, agent_idx=agent_idx)
+
+    # Plot polylines
+    print("Plotting predicted trajectories...\n")
+    _plot_polylines(predicted_trajectories)
+
+    # Plot past trajectory
+    # print("Visualizing trajectories...\n")
+    # # for agent in range(y_hat.shape[1]):
+    # for agent in range(1):
+    #     print(f"Plotting agent {agent}...")
+    #     plot_trajectories_on_map(ax, features, preds=preds, sample_idx=sample_idx, agent_idx=agent)
+
+# === SAVE VISUALIZATION ===
+viz_output_dir = Path(PROJECT_ROOT, "visualizations")  # path where the figure gets saved to
+if not os.path.exists(viz_output_dir):
+    print("Path for Visualization does not exist. Creating directory...")
+    os.mkdir(viz_output_dir)
+
+viz_save_path = viz_output_dir / f"{scenario_id}_{agent_idx}_{task}.png"
+
+print(f"Saving visualization to {viz_save_path}...")
+plt.savefig(viz_save_path)
