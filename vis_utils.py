@@ -95,7 +95,7 @@ class AV2MapVisualizer:
         # ~ lane segments
         print('Num lanes: ', len(static_map.vector_lane_segments))
         for lane_id, lane_segment in static_map.vector_lane_segments.items():
-            lane_clr = 'grey'
+            # lane_clr = 'grey'
             polygon = lane_segment.polygon_boundary
             ax.fill(polygon[:, 0], polygon[:, 1], color='whitesmoke', alpha=1.0, edgecolor=None, zorder=0)
 
@@ -103,55 +103,55 @@ class AV2MapVisualizer:
             centerline = lane_segment.centerline.xyz[:, 0:2]  # use xy
             ax.plot(centerline[:, 0], centerline[:, 1], alpha=0.1, color='grey', linestyle='dotted', zorder=1)
 
-            # lane boundary
-            for boundary, mark_type in [(lane_segment.left_lane_boundary.xyz, lane_segment.left_mark_type),
-                                        (lane_segment.right_lane_boundary.xyz, lane_segment.right_mark_type)]:
+            # # lane boundary
+            # for boundary, mark_type in [(lane_segment.left_lane_boundary.xyz, lane_segment.left_mark_type),
+            #                             (lane_segment.right_lane_boundary.xyz, lane_segment.right_mark_type)]:
 
-                clr = None
-                width = 1.0
-                if mark_type in [LaneMarkType.DASH_SOLID_WHITE,
-                                 LaneMarkType.DASHED_WHITE,
-                                 LaneMarkType.DOUBLE_DASH_WHITE,
-                                 LaneMarkType.DOUBLE_SOLID_WHITE,
-                                 LaneMarkType.SOLID_WHITE,
-                                 LaneMarkType.SOLID_DASH_WHITE]:
-                    clr = 'white'
-                    zorder = 3
-                    width = width
-                elif mark_type in [LaneMarkType.DASH_SOLID_YELLOW,
-                                   LaneMarkType.DASHED_YELLOW,
-                                   LaneMarkType.DOUBLE_DASH_YELLOW,
-                                   LaneMarkType.DOUBLE_SOLID_YELLOW,
-                                   LaneMarkType.SOLID_YELLOW,
-                                   LaneMarkType.SOLID_DASH_YELLOW]:
-                    clr = 'gold'
-                    zorder = 4
-                    width = width * 1.1
+            #     clr = None
+            #     width = 1.0
+            #     if mark_type in [LaneMarkType.DASH_SOLID_WHITE,
+            #                      LaneMarkType.DASHED_WHITE,
+            #                      LaneMarkType.DOUBLE_DASH_WHITE,
+            #                      LaneMarkType.DOUBLE_SOLID_WHITE,
+            #                      LaneMarkType.SOLID_WHITE,
+            #                      LaneMarkType.SOLID_DASH_WHITE]:
+            #         clr = 'white'
+            #         zorder = 3
+            #         width = width
+            #     elif mark_type in [LaneMarkType.DASH_SOLID_YELLOW,
+            #                        LaneMarkType.DASHED_YELLOW,
+            #                        LaneMarkType.DOUBLE_DASH_YELLOW,
+            #                        LaneMarkType.DOUBLE_SOLID_YELLOW,
+            #                        LaneMarkType.SOLID_YELLOW,
+            #                        LaneMarkType.SOLID_DASH_YELLOW]:
+            #         clr = 'gold'
+            #         zorder = 4
+            #         width = width * 1.1
 
-                style = 'solid'
-                if mark_type in [LaneMarkType.DASHED_WHITE,
-                                 LaneMarkType.DASHED_YELLOW,
-                                 LaneMarkType.DOUBLE_DASH_YELLOW,
-                                 LaneMarkType.DOUBLE_DASH_WHITE]:
-                    style = (0, (5, 10))  # loosely dashed
-                elif mark_type in [LaneMarkType.DASH_SOLID_YELLOW,
-                                   LaneMarkType.DASH_SOLID_WHITE,
-                                   LaneMarkType.DOUBLE_SOLID_YELLOW,
-                                   LaneMarkType.DOUBLE_SOLID_WHITE,
-                                   LaneMarkType.SOLID_YELLOW,
-                                   LaneMarkType.SOLID_WHITE,
-                                   LaneMarkType.SOLID_DASH_WHITE,
-                                   LaneMarkType.SOLID_DASH_YELLOW]:
-                    style = 'solid'
+            #     style = 'solid'
+            #     if mark_type in [LaneMarkType.DASHED_WHITE,
+            #                      LaneMarkType.DASHED_YELLOW,
+            #                      LaneMarkType.DOUBLE_DASH_YELLOW,
+            #                      LaneMarkType.DOUBLE_DASH_WHITE]:
+            #         style = (0, (5, 10))  # loosely dashed
+            #     elif mark_type in [LaneMarkType.DASH_SOLID_YELLOW,
+            #                        LaneMarkType.DASH_SOLID_WHITE,
+            #                        LaneMarkType.DOUBLE_SOLID_YELLOW,
+            #                        LaneMarkType.DOUBLE_SOLID_WHITE,
+            #                        LaneMarkType.SOLID_YELLOW,
+            #                        LaneMarkType.SOLID_WHITE,
+            #                        LaneMarkType.SOLID_DASH_WHITE,
+            #                        LaneMarkType.SOLID_DASH_YELLOW]:
+            #         style = 'solid'
 
-                if (clr is not None) and (style is not None):
-                    ax.plot(boundary[:, 0],
-                            boundary[:, 1],
-                            color=clr,
-                            alpha=1.0,
-                            linewidth=width,
-                            linestyle=style,
-                            zorder=zorder)
+            #    if (clr is not None) and (style is not None):
+            #        ax.plot(boundary[:, 0],
+            #                boundary[:, 1],
+            #                color=clr,
+            #                alpha=1.0,
+            #                linewidth=width,
+            #                linestyle=style,
+            #                zorder=zorder)
 
         # ~ ped xing
         for pedxing in static_map.vector_pedestrian_crossings.values():
@@ -168,8 +168,9 @@ def load_model(checkpoint_path: str, split: str = "test"):
     pl.seed_everything(cfg.seed)
 
     # Load datamodule
-    datamodule = instantiate(cfg.datamodule.pl_module, test=True)
-    datamodule.setup(stage="test")
+    test = True if split == 'test' else False
+    datamodule = instantiate(cfg.datamodule.pl_module, test=test)
+    datamodule.setup(stage=split)
 
     # Load model
     model = instantiate(cfg.model.pl_module)
@@ -208,7 +209,7 @@ def load_scenario_and_map(scenario_id: str, split: str, dataset_root: str) -> tu
     if not parquet_files:
         raise FileNotFoundError(f"No parquet files found under {scenario_path}")
     parquet_path = parquet_files[0]
-    print(f"[INFO] Found scenario parquet at: {parquet_path}")
+    # print(f"[INFO] Found scenario parquet at: {parquet_path}")
 
     # Map path
     static_map_path = scenario_path / f"log_map_archive_{scenario_id}.json"
@@ -223,12 +224,12 @@ def load_scenario_and_map(scenario_id: str, split: str, dataset_root: str) -> tu
 
 def local_to_global(traj_local, center, angle=0):
     """Convert [T, 2] trajectory from local to global using rotation and translation."""
-    rot = torch.tensor([
+    R = torch.tensor([
         [np.cos(angle), -np.sin(angle)],
         [np.sin(angle), np.cos(angle)]
     ], dtype=traj_local.dtype, device=traj_local.device)
 
-    return traj_local @ rot.T + center
+    return traj_local @ R.T + center
 
 def extract_predicted_traj(preds, agent_idx: int, batch_idx: int = 0, all_agents: bool = True):
     """
@@ -251,7 +252,7 @@ def extract_predicted_traj(preds, agent_idx: int, batch_idx: int = 0, all_agents
     predicted_trajectories = []
 
     if all_agents:
-        print("Collecting all agents...")
+        # print("Collecting all agents...")
         for a in range(A):
             center = centers[batch_idx]
             traj = glo_y_hat[batch_idx, a]  # [T, 2]
@@ -259,7 +260,7 @@ def extract_predicted_traj(preds, agent_idx: int, batch_idx: int = 0, all_agents
             polyline = polyline.cpu().numpy()  # Convert to NumPy
             predicted_trajectories.append(polyline)     # [T, 2]
     else:
-        print(f"Collecting agent {agent_idx}...")
+        # print(f"Collecting agent {agent_idx}...")
         center = centers[batch_idx]
         traj = glo_y_hat[batch_idx, agent_idx]  # [T, 2]
         polyline = local_to_global(traj, center)

@@ -79,7 +79,7 @@ elif MODE == 1:
     task = "predict"
 
 # === LOAD MODEL ===
-split = 'test'
+split = 'val'
 loader, model = load_model(checkpoint_path=CHECKPOINT_PATH, split=split)
 
 features, labels, extra = next(iter(loader))
@@ -94,41 +94,62 @@ extra = {k: v.to(device) if torch.is_tensor(v) else v for k, v in extra.items()}
 
 scenario_ids = features['scenario_id']
 
-# === MAP VISUALIZATION===
-sample_idx = 0
-agent_idx = 2
-scenario_id = scenario_ids[sample_idx]
-
-# Load scenario for visualization
-print(f"Loading scenario {scenario_id}...")
-scenario, static_map = load_scenario_and_map(scenario_id, split, dataset_path)
-
-_, ax = plt.subplots(figsize=(12, 12))
-ax.axis('equal')
-ax.set_title('{}-{}-agent{}'.format(scenario_id, task, agent_idx))
-ax.legend()
-
-# Visualizing map
-print("Visualizing map...")
-AV2MapVisualizer(dataset_path=dataset_path).show_map(ax, split=split, seq_id=scenario_id)
-
-print("Plotting actor tracks...")
-_plot_actor_tracks(ax, scenario, timestep=60)
+B, A, T, _ = features['x_positions'].shape
 
 # === PREDICT ===
 if MODE == 1:
     model.eval()
     with torch.no_grad():
-        print("Predicting...\n")
+        print("PREDICTING...\n")
         preds = model(features)
+centers = preds['memory_dict']['origin']  # [B, 2]
+angles = preds['memory_dict']['theta']  # [B]
 
-# === TRAJETORY VISUALIZATION ===
-if preds is not None:
-    predicted_trajectories = extract_predicted_traj(preds, batch_idx=sample_idx, all_agents=False, agent_idx=agent_idx)
+print(centers[1].type(), centers[1].shape)
 
-    # Plot polylines
-    print("Plotting predicted trajectories...\n")
-    _plot_polylines(predicted_trajectories)
+# === MAP VISUALIZATION===
+# sample_idx = 3
+# agent_idx = 5
+B = 5
+for sample_idx in range(B):
+    print(f"### BATCH {sample_idx} ###\n")
+    for agent_idx in range(A):
+        # print(f"Plotting batch {sample_idx}, agent {agent_idx}...\n")
+        scenario_id = scenario_ids[sample_idx]
+
+        # Load scenario for visualization
+        scenario, static_map = load_scenario_and_map(scenario_id, split, dataset_path)
+        # print(f"Loaded scenario {scenario_id}.")
+
+        # Some plot configs
+        _, ax = plt.subplots(figsize=(12, 12))
+        ax.axis('equal')
+        ax.set_title('{}-{}-agent{}'.format(scenario_id, task, agent_idx))
+
+        # Visualizing map
+        AV2MapVisualizer(dataset_path=dataset_path).show_map(ax, split=split, seq_id=scenario_id)
+        # print("Visualizing map: DONE\n")
+
+        _plot_actor_tracks(ax, scenario, timestep=60)
+        # print("Plotting actor tracks: DONE\n")
+
+        if preds is not None:
+            # === TARGET VISUALIZATION ===
+            t_mask = labels['target_mask'][sample_idx, agent_idx]  # [60]
+            target = labels['target'][sample_idx, agent_idx][t_mask]  # [60, 2]
+            target = local_to_global(target, center=centers[sample_idx], angle=angles[sample_idx])
+            ax.plot(target[:, 0].cpu().numpy(), target[:, 1].cpu().numpy(), 'g-', label='Target')
+            # print("Plotting target: DONE\n")
+
+            # === TRAJETORY VISUALIZATION ===
+            predicted_trajectories = extract_predicted_traj(preds, batch_idx=sample_idx, all_agents=False, agent_idx=agent_idx)
+
+            # Plot polylines
+            _plot_polylines(predicted_trajectories)
+            # Give plotted preds a label
+            pred_lines = plt.gca().lines[-1]
+            pred_lines.set_label('Prediction')
+            # print("Plotting predicted trajectories: DONE\n")
 
     # Plot past trajectory
     # print("Visualizing trajectories...\n")
@@ -137,13 +158,14 @@ if preds is not None:
     #     print(f"Plotting agent {agent}...")
     #     plot_trajectories_on_map(ax, features, preds=preds, sample_idx=sample_idx, agent_idx=agent)
 
-# === SAVE VISUALIZATION ===
-viz_output_dir = Path(PROJECT_ROOT, "visualizations")  # path where the figure gets saved to
-if not os.path.exists(viz_output_dir):
-    print("Path for Visualization does not exist. Creating directory...")
-    os.mkdir(viz_output_dir)
+        # === SAVE VISUALIZATION ===
+        ax.legend()
+        viz_output_dir = Path(PROJECT_ROOT, "visualizations")  # path where the figure gets saved to
+        if not os.path.exists(viz_output_dir):
+            print("Path for Visualization does not exist. Creating directory...")
+            os.mkdir(viz_output_dir)
 
-viz_save_path = viz_output_dir / f"{scenario_id}_{agent_idx}_{task}.png"
+        viz_save_path = viz_output_dir / f"{scenario_id}_{agent_idx}_{task}.png"
 
-print(f"Saving visualization to {viz_save_path}...")
-plt.savefig(viz_save_path)
+        plt.savefig(viz_save_path)
+        print(f"Saved visualization to {viz_save_path}\n")
