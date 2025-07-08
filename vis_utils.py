@@ -268,3 +268,32 @@ def extract_predicted_traj(preds, agent_idx: int, batch_idx: int = 0, all_agents
         predicted_trajectories.append(polyline)     # [T, 2]
 
     return predicted_trajectories
+
+def extract_targets(labels, batch_idx: int, agent_idx: int, all_agents: bool):
+    target = labels['target']  # [B, A, 60, 2]
+    t_mask = labels['target_mask']  # [B, A, 60]
+    masked_target = target * t_mask.unsqueeze(-1)  # shape: [B, A, 60, 2]
+
+    B, A, T, _ = target.shape
+    if batch_idx > B or agent_idx > A:
+        raise IndexError(f"Batch index {batch_idx} or agent index {agent_idx} out of range: B={B}, A={A}")
+
+    centers = labels['origin']
+    angles = labels['theta']
+
+    trajectories = []
+    if all_agents:
+        # print("Collecting all agents...")
+        for a in range(A):
+            traj = masked_target[batch_idx, a]  # [T, 2]
+            polyline = local_to_global(traj, centers[batch_idx], angles[batch_idx])
+            polyline = polyline.cpu().numpy()  # Convert to NumPy
+            trajectories.append(polyline)     # [T, 2]
+    else:
+        # print(f"Collecting agent {agent_idx}...")
+        traj = masked_target[batch_idx, agent_idx]  # [T, 2]
+        polyline = local_to_global(traj, centers[batch_idx], angles[batch_idx])
+        polyline = polyline.cpu().numpy()  # Convert to NumPy
+        trajectories.append(polyline)     # [T, 2]
+
+    return trajectories

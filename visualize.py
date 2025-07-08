@@ -7,7 +7,8 @@ from models.RealMotion.RealMotion.vis_utils import (
     load_model,
     load_scenario_and_map,
     local_to_global,
-    extract_predicted_traj
+    extract_predicted_traj,
+    extract_targets
 )
 
 from av2.datasets.motion_forecasting.viz.scenario_visualization import (
@@ -54,7 +55,7 @@ def plot_trajectories_on_map(
     if preds is None:
         raise ValueError("Predictions are required to plot future trajectories.")
     else:
-        y_hat = preds['y_hat'][sample_idx, agent_idx]  # [60, 2]
+        # y_hat = preds['y_hat'][sample_idx, agent_idx]  # [60, 2]
         # pred_traj = local_to_global(y_hat, center, angle).cpu().numpy()
         global_y_hat = preds['memory_dict']['glo_y_hat'][sample_idx, agent_idx]  # [60, 2]
         global_y_hat = local_to_global(global_y_hat, center)
@@ -102,15 +103,14 @@ if MODE == 1:
     with torch.no_grad():
         print("PREDICTING...\n")
         preds = model(features)
-centers = preds['memory_dict']['origin']  # [B, 2]
-angles = preds['memory_dict']['theta']  # [B]
-
-print(centers[1].type(), centers[1].shape)
+centers = features['origin']  # [B, 2]
+angles = features['theta']  # [B]
 
 # === MAP VISUALIZATION===
 # sample_idx = 3
 # agent_idx = 5
-B = 5
+B = 6
+all_agents_bool = False
 for sample_idx in range(B):
     print(f"### BATCH {sample_idx} ###\n")
     for agent_idx in range(A):
@@ -122,7 +122,7 @@ for sample_idx in range(B):
         # print(f"Loaded scenario {scenario_id}.")
 
         # Some plot configs
-        _, ax = plt.subplots(figsize=(12, 12))
+        _, ax = plt.subplots(figsize=(8, 8))
         ax.axis('equal')
         ax.set_title('{}-{}-agent{}'.format(scenario_id, task, agent_idx))
 
@@ -135,29 +135,41 @@ for sample_idx in range(B):
 
         if preds is not None:
             # === TARGET VISUALIZATION ===
-            t_mask = labels['target_mask'][sample_idx, agent_idx]  # [60]
-            target = labels['target'][sample_idx, agent_idx][t_mask]  # [60, 2]
-            target = local_to_global(target, center=centers[sample_idx], angle=angles[sample_idx])
-            ax.plot(target[:, 0].cpu().numpy(), target[:, 1].cpu().numpy(), 'g-', label='Target')
+            # t_mask = extra['target_mask'][sample_idx, agent_idx]  # [60]
+            # target = extra['target'][sample_idx, agent_idx][t_mask]  # [60, 2]
+            # target = local_to_global(target, center=centers[sample_idx], angle=angles[sample_idx])
+            # ax.plot(target[:, 0].cpu().numpy(), target[:, 1].cpu().numpy(), 'g-', label='Target')
+            target_trajectories = extract_targets(labels, batch_idx=sample_idx, all_agents=all_agents_bool, agent_idx=agent_idx)
+            _plot_polylines(target_trajectories, line_width=1, color='green')
+            # Give plotted preds a label
+            pred_lines = plt.gca().lines[-1]
+            pred_lines.set_label('Target')
             # print("Plotting target: DONE\n")
 
             # === TRAJETORY VISUALIZATION ===
-            predicted_trajectories = extract_predicted_traj(preds, batch_idx=sample_idx, all_agents=False, agent_idx=agent_idx)
+            predicted_trajectories = extract_predicted_traj(preds, batch_idx=sample_idx, all_agents=all_agents_bool, agent_idx=agent_idx)
 
             # Plot polylines
-            _plot_polylines(predicted_trajectories)
+            _plot_polylines(predicted_trajectories, line_width=0.5)
             # Give plotted preds a label
             pred_lines = plt.gca().lines[-1]
             pred_lines.set_label('Prediction')
             # print("Plotting predicted trajectories: DONE\n")
 
-    # Plot past trajectory
-    # print("Visualizing trajectories...\n")
-    # # for agent in range(y_hat.shape[1]):
-    # for agent in range(1):
-    #     print(f"Plotting agent {agent}...")
-    #     plot_trajectories_on_map(ax, features, preds=preds, sample_idx=sample_idx, agent_idx=agent)
+        if all_agents_bool is False:
+            # === SAVE VISUALIZATION ===
+            ax.legend()
+            viz_output_dir = Path(PROJECT_ROOT, "visualizations")  # path where the figure gets saved to
+            if not os.path.exists(viz_output_dir):
+                print("Path for Visualization does not exist. Creating directory...")
+                os.mkdir(viz_output_dir)
 
+            viz_save_path = viz_output_dir / f"{scenario_id}_{agent_idx}_{task}.png"
+            plt.savefig(viz_save_path)
+            print(f"Saved visualization to {viz_save_path}\n")
+        # ---End of agents loop
+
+    if all_agents_bool is True:
         # === SAVE VISUALIZATION ===
         ax.legend()
         viz_output_dir = Path(PROJECT_ROOT, "visualizations")  # path where the figure gets saved to
@@ -165,7 +177,7 @@ for sample_idx in range(B):
             print("Path for Visualization does not exist. Creating directory...")
             os.mkdir(viz_output_dir)
 
-        viz_save_path = viz_output_dir / f"{scenario_id}_{agent_idx}_{task}.png"
+        viz_save_path = viz_output_dir / f"{scenario_id}_{task}.png"
 
         plt.savefig(viz_save_path)
         print(f"Saved visualization to {viz_save_path}\n")
