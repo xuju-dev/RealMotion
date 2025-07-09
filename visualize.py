@@ -109,8 +109,8 @@ angles = features['theta']  # [B]
 # === MAP VISUALIZATION===
 # sample_idx = 3
 # agent_idx = 5
-B = 16
-all_agents_bool = False
+B = 6
+all_agents_bool = True
 for sample_idx in range(B):
     print(f"### BATCH {sample_idx} ###\n")
     for agent_idx in range(A):

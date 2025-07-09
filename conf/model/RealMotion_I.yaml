@@ -5,7 +5,7 @@ pl_module:
   model:
     _target_: realmotion.model.realmotion.RealMotion_I
     embed_dim: 128
-    future_steps: 60
+    future_steps: 40
     encoder_depth: 4
     num_heads: 8
     mlp_ratio: 4.0
