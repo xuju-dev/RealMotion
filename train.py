@@ -6,7 +6,7 @@ from hydra.utils import instantiate
 logger = logging.getLogger(__name__)
 
 
-@hydra.main(version_base=None, config_path="conf", config_name="config")
+@hydra.main(config_path="conf", config_name="config")
 def main(cfg):
     logger.info(f"Experiments are stored in {cfg.output_dir}")
     pl.seed_everything(cfg.seed, workers=True)
