@@ -11,18 +11,18 @@ class Av2Dataset(Dataset):
         self,
         data_root: Path,
         split: str = None,
-        num_historical_steps: int = 50,
+        num_historical_steps: int = 20,
         split_points: List[int] = [50],
-        radius: float = 150.0,
+        radius: float = 300.0,
         logger=None,
     ):
-        assert split_points[-1] == 50 and num_historical_steps <= 50
+        assert split_points[-1] == 50 and num_historical_steps <= 20
         assert split in ['train', 'val', 'test']
         super(Av2Dataset, self).__init__()
         self.data_folder = Path(data_root) / split
         self.file_list = sorted(list(self.data_folder.glob('*.pt')))
         self.num_historical_steps = num_historical_steps
-        self.num_future_steps = 0 if split =='test' else 60
+        self.num_future_steps = 0 if split == 'test' else 40
         self.split_points = split_points
         self.radius = radius
 
