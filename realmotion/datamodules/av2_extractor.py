@@ -38,6 +38,8 @@ class Av2Extractor:
         except Exception:
             print(traceback.format_exc())
             print("found error while extracting data from {}".format(file))
+            return
+
         save_file = self.save_path / (file.stem + ".pt")
         torch.save(data, save_file)
 
