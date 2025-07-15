@@ -29,6 +29,8 @@ class minADE(Metric):
     def update(self, outputs: Dict[str, torch.Tensor], target: torch.Tensor) -> None:
         with torch.no_grad():
             pred, _ = sort_predictions(outputs['y_hat'], outputs['pi'], k=self.k)
+            # Ensure target matches pred's time dimension
+            target = target[..., :pred.shape[-2], :]
             ade = torch.norm(
                 pred[..., :2] - target.unsqueeze(1)[..., :2], p=2, dim=-1
             ).mean(-1)

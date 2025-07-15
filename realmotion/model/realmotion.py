@@ -20,7 +20,7 @@ class RealMotion_I(nn.Module):
         mlp_ratio=4.0,
         qkv_bias=False,
         drop_path=0.2,
-        future_steps=60,
+        future_steps=40,
         use_transformer_decoder=False,
         num_decoder_layers=6,
     ) -> None:
@@ -171,8 +171,11 @@ class RealMotion_I(nn.Module):
         x_agent = x_encoder[:, 0]
         y_hat, pi, x_mode = self.decoder(x_agent)
         x_others = x_encoder[:, 1:N]
+        if x_others.size(1) == 0:
+            print("No other agents found! ", x_others.shape)
+            return None
         y_hat_others = self.dense_predictor(x_others).view(B, x_others.size(1), -1, 2)
-        
+
         cos, sin = data['theta'].cos(), data['theta'].sin()
         rot_mat = data['theta'].new_zeros(B, 2, 2)
         rot_mat[:, 0, 0] = cos

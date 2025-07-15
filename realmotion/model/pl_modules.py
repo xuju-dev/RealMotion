@@ -42,6 +42,9 @@ class BaseLightningModule(pl.LightningModule):
         y_hat, pi, y_hat_others = out['y_hat'], out['pi'], out['y_hat_others']
         new_y_hat = out.get('new_y_hat', None)
         y, y_others = data['target'][:, 0], data['target'][:, 1:]
+
+        y = y[:, :y_hat.shape[2], :] # ensure size match when changing future steps (e.g. 60->40)
+
         if new_y_hat is None:
             l2_norm = torch.norm(y_hat[..., :2] - y.unsqueeze(1), dim=-1).sum(dim=-1)
         else:
@@ -58,6 +61,11 @@ class BaseLightningModule(pl.LightningModule):
             new_agent_reg_loss = 0
 
         others_reg_mask = data['target_mask'][:, 1:]
+
+        # slice to fit pred shape
+        others_reg_mask = data['target_mask'][:, 1:, :y_hat_others.shape[2]]
+        y_others = y_others[:, :, :y_hat_others.shape[2], :]
+
         others_reg_loss = F.smooth_l1_loss(
             y_hat_others[others_reg_mask], y_others[others_reg_mask]
         )

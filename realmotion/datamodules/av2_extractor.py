@@ -68,11 +68,11 @@ class Av2Extractor:
             node_steps = [timestamps.index(ts) for ts in actor_df["timestep"]]
             object_type = OBJECT_TYPE_MAP[actor_df["object_type"].values[0]]
             object_category = actor_df["object_category"].values[0]
-            x_attr[node_idx, 0] = object_type
-            x_attr[node_idx, 1] = object_category
-            x_attr[node_idx, 2] = OBJECT_TYPE_MAP_COMBINED[
+            x_attr[node_idx, 0] = int(object_type)
+            x_attr[node_idx, 1] = int(object_category)
+            x_attr[node_idx, 2] = int(OBJECT_TYPE_MAP_COMBINED[
                 actor_df["object_type"].values[0]
-            ]
+            ])
             if object_category == 3:
                 focal_idx = node_idx
             if object_category == 2:
