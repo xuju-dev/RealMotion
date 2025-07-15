@@ -33,10 +33,14 @@ class Av2Dataset(Dataset):
         return len(self.file_list)
 
     def __getitem__(self, index: int):
-        data = torch.load(self.file_list[index])
-        data = self.process(data)
-        return data
-    
+        try:
+            data = torch.load(self.file_list[index])
+            data = self.process(data)
+            return data
+        except Exception as e:
+            print(f"Failed to load {self.file_list[index]}: {e}")
+            raise
+
     def process(self, data):
         sequence_data = []
         for cur_step in self.split_points:
