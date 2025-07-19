@@ -7,7 +7,6 @@ from tqdm import tqdm
 
 from realmotion.datamodules.av2_extractor import Av2Extractor
 
-
 def glob_files(data_root: Path, mode: str):
     file_root = data_root / mode
     scenario_files = list(file_root.rglob("*.parquet"))
@@ -19,7 +18,7 @@ def preprocess(args):
     data_root = Path(args.data_root)
 
     for mode in ["train", "val", "test"]:
-        save_dir = data_root / "realmotion_processed" / mode
+        save_dir = data_root / "realmotion_processed_190725" / mode
         extractor = Av2Extractor(save_path=save_dir, mode=mode)
 
         save_dir.mkdir(exist_ok=True, parents=True)

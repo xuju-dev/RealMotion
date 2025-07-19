@@ -16,13 +16,13 @@ class Av2Dataset(Dataset):
         radius: float = 300.0,
         logger=None,
     ):
-        assert split_points[-1] == 50 and num_historical_steps <= 20
+        assert split_points[-1] == 50 and num_historical_steps <= 30
         assert split in ['train', 'val', 'test']
         super(Av2Dataset, self).__init__()
         self.data_folder = Path(data_root) / split
         self.file_list = sorted(list(self.data_folder.glob('*.pt')))
         self.num_historical_steps = num_historical_steps
-        self.num_future_steps = 0 if split == 'test' else 40
+        self.num_future_steps = 0 if split == 'test' else 60
         self.split_points = split_points
         self.radius = radius
 
@@ -175,7 +175,6 @@ class Av2Dataset(Dataset):
             'timestamp': torch.Tensor([step * 0.1])
         }
 
-        
 
 def collate_fn(seq_batch):
     seq_data = []
@@ -226,3 +225,86 @@ def collate_fn(seq_batch):
         data['timestamp'] = torch.cat([b['timestamp'] for b in batch])
         seq_data.append(data)
     return seq_data
+
+
+# def collate_fn(seq_batch):
+#     seq_data = []
+
+#     for i in range(len(seq_batch[0])):
+#         batch = [b[i] for b in seq_batch]
+#         data = {}
+
+#         # Max # of agents in this batch
+#         max_agents = max(b['x_positions'].shape[0] for b in batch)
+
+#         def pad_agents(tensor, target_len):
+#             if tensor.shape[0] == target_len:
+#                 return tensor
+#             pad_shape = list(tensor.shape)
+#             pad_shape[0] = target_len - tensor.shape[0]
+#             pad = torch.zeros(*pad_shape, dtype=tensor.dtype, device=tensor.device)
+#             return torch.cat([tensor, pad], dim=0)
+
+#         def pad_agents_bool(tensor, target_len):
+#             if tensor.shape[0] == target_len:
+#                 return tensor
+#             pad_shape = list(tensor.shape)
+#             pad_shape[0] = target_len - tensor.shape[0]
+#             pad = torch.zeros(*pad_shape, dtype=torch.bool, device=tensor.device)
+#             return torch.cat([tensor, pad], dim=0)
+
+#         # Agent-level tensors
+#         agent_keys = [
+#             'x_positions_diff', 'x_attr', 'x_positions', 'x_centers',
+#             'x_angles', 'x_velocity', 'x_velocity_diff'
+#         ]
+#         for key in agent_keys:
+#             data[key] = pad_sequence([b[key] for b in batch], batch_first=True)
+
+#         # Lane-level (only 1 lane set per batch element)
+#         lane_keys = ['lane_positions', 'lane_centers', 'lane_angles', 'lane_attr']
+#         for key in lane_keys:
+#             data[key] = pad_sequence([b[key] for b in batch], batch_first=True)
+
+#         # Booleans (masks)
+#         data['x_valid_mask'] = torch.stack([
+#             pad_agents_bool(b['x_valid_mask'], max_agents) for b in batch
+#         ])
+#         data['x_key_valid_mask'] = data['x_valid_mask'].any(-1)
+
+#         data['lane_valid_mask'] = pad_sequence(
+#             [b['lane_valid_mask'] for b in batch],
+#             batch_first=True,
+#             padding_value=False
+#         )
+#         data['lane_key_valid_mask'] = data['lane_valid_mask'].any(-1)
+
+#         # Optional fields
+#         if 'x_scored' in batch[0]:
+#             data['x_scored'] = torch.stack([
+#                 pad_agents_bool(b['x_scored'], max_agents) for b in batch
+#             ])
+#         if batch[0]['target'] is not None:
+#             data['target'] = torch.stack([
+#                 pad_agents(b['target'], max_agents) for b in batch
+#             ])
+#             data['target_mask'] = torch.stack([
+#                 pad_agents_bool(b['target_mask'], max_agents) for b in batch
+#             ])
+
+#         # Metadata
+#         data['scenario_id'] = [b['scenario_id'] for b in batch]
+#         data['track_id'] = [b['track_id'] for b in batch]
+#         data['origin'] = torch.stack([b['origin'] for b in batch])
+#         data['theta'] = torch.stack([b['theta'] for b in batch])
+#         data['timestamp'] = torch.stack([b['timestamp'] for b in batch])
+
+#         # Optional: Agent validity mask (for padding tracking): True for true agents, False for padding
+#         agent_mask = torch.zeros(len(batch), max_agents, dtype=torch.bool)
+#         for j, b in enumerate(batch):
+#             agent_mask[j, :b['x_positions'].shape[0]] = True
+#         data['agent_mask'] = agent_mask
+
+#         seq_data.append(data)
+
+#     return seq_data

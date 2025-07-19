@@ -17,7 +17,9 @@ def main(cfg):
     model = instantiate(cfg.model.pl_module)
     logger.info(model)
 
-    callbacks = instantiate(cfg.callbacks)
+    # callbacks = instantiate(cfg.callbacks)
+    callbacks = [instantiate(cb) for cb in cfg.callbacks]
+
     trainer = pl.Trainer(
         callbacks=callbacks,
         **cfg.trainer

@@ -130,7 +130,7 @@ for sample_idx in range(B):
         AV2MapVisualizer(dataset_path=dataset_path).show_map(ax, split=split, seq_id=scenario_id)
         # print("Visualizing map: DONE\n")
 
-        _plot_actor_tracks(ax, scenario, timestep=60)
+        _plot_actor_tracks(ax, scenario, timestep=40)
         # print("Plotting actor tracks: DONE\n")
 
         if preds is not None:

@@ -190,7 +190,7 @@ def load_model(checkpoint_path: str, split: str = "test"):
 
 def load_scenario_and_map(scenario_id: str, split: str, dataset_root: str) -> tuple:
     """
-    Load scenario data and static map from a given scenario ID and split.
+    Load scenario data and static map from a given scenario ID and split from a parquet file.
 
     Args:
         scenario_id (str): The scenario ID (e.g., '001-182cf688453e7cb4-11-abudhabi')

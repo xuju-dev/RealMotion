@@ -52,6 +52,7 @@ class Av2DataModule(LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             collate_fn=collate_fn,
+            drop_last=True,
         )
 
     def val_dataloader(self):
