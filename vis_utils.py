@@ -1,3 +1,4 @@
+# flake8: noqa: E302,E501 
 from pathlib import Path
 import numpy as np
 import torch
@@ -286,8 +287,8 @@ def extract_targets(labels, batch_idx: int, agent_idx: int, all_agents: bool):
         # print("Collecting all agents...")
         for a in range(A):
             traj = masked_target[batch_idx, a]  # [T, 2]
-            # polyline = local_to_global(traj, centers[batch_idx], angles[batch_idx])
-            polyline = traj.cpu().numpy()  # Convert to NumPy
+            polyline = local_to_global(traj, centers[batch_idx], angles[batch_idx])
+            polyline = polyline.cpu().numpy()  # Convert to NumPy
             trajectories.append(polyline)     # [T, 2]
     else:
         # print(f"Collecting agent {agent_idx}...")

@@ -1,3 +1,4 @@
+# flake8: noqa: E302,E501
 from pathlib import Path
 from typing import Optional
 

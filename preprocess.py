@@ -1,3 +1,4 @@
+# flake8: noqa: E302,E501                                                                                                                                                                                                                                                
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import List
@@ -18,7 +19,7 @@ def preprocess(args):
     data_root = Path(args.data_root)
 
     for mode in ["train", "val", "test"]:
-        save_dir = data_root / "realmotion_processed_190725" / mode
+        save_dir = data_root / "realmotion_processed_190725_20hist_40fut" / mode
         extractor = Av2Extractor(save_path=save_dir, mode=mode)
 
         save_dir.mkdir(exist_ok=True, parents=True)

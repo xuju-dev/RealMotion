@@ -1,3 +1,4 @@
+# flake8: noqa: E302,E501 
 import os
 from pathlib import Path
 import torch
@@ -70,8 +71,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent  # /home/xuju/tam_deep_prediction
 # TAM_DEEP_PREDICTION_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 # CONFIG_PATH = os.path.join(PROJECT_ROOT, "conf/model/RealMotion.yaml")
-CHECKPOINT_PATH = os.path.join(PROJECT_ROOT, "outputs/RealMotion-av2_3frame_30his/20250609-185705/checkpoints/epoch_71-minADE6_1.1839549541473389.ckpt")
-epoch = 71
+#  TODO: Change checkpoint path
+# CHECKPOINT_PATH = os.path.join(PROJECT_ROOT, "outputs/RealMotion-av2_3frame_30his/20250609-185705/checkpoints/epoch_71-minADE6_1.1839549541473389.ckpt")
+CHECKPOINT_PATH = "/dev_ws/src/tam_deep_prediction/models/RealMotion/RealMotion/outputs/RealMotion-av2_3frame_30his/20250719-165800/outputs/RealMotion-av2_3frame_30his/20250719-165800/checkpoints/epoch_79-minADE6_0.7625836730003357.ckpt"
+datetime = "20250719-165800"
+epoch = 79
 
 MODE = 1  # TODO: for naming convention (0: only map or 1: with trajectory)
 if MODE == 0:
@@ -109,8 +113,8 @@ angles = features['theta']  # [B]
 # === MAP VISUALIZATION===
 # sample_idx = 3
 # agent_idx = 5
-B = 6
-all_agents_bool = True
+B = 10
+all_agents_bool = False
 for sample_idx in range(B):
     print(f"### BATCH {sample_idx} ###\n")
     for agent_idx in range(A):
@@ -155,7 +159,7 @@ for sample_idx in range(B):
         if all_agents_bool is False:
             # === SAVE VISUALIZATION ===
             ax.legend()
-            viz_output_dir = Path(PROJECT_ROOT, "visualizations")  # path where the figure gets saved to
+            viz_output_dir = Path(PROJECT_ROOT, f"visualizations/{datetime}")  # path where the figure gets saved to
             if not os.path.exists(viz_output_dir):
                 print("Path for Visualization does not exist. Creating directory...")
                 os.mkdir(viz_output_dir)
@@ -168,7 +172,7 @@ for sample_idx in range(B):
     if all_agents_bool is True:
         # === SAVE VISUALIZATION ===
         ax.legend()
-        viz_output_dir = Path(PROJECT_ROOT, "visualizations")  # path where the figure gets saved to
+        viz_output_dir = Path(PROJECT_ROOT, f"visualizations/{datetime}")  # path where the figure gets saved to
         if not os.path.exists(viz_output_dir):
             print("Path for Visualization does not exist. Creating directory...")
             os.mkdir(viz_output_dir)
