@@ -22,7 +22,7 @@ def main(cfg):
     if not cfg.submit:
         trainer.validate(model, datamodule, ckpt_path=cfg.checkpoint)
     else:
-        trainer.test(model, datamodule, ckpt_path=cfg.checkpoint)
+        trainer.test(model, datamodule, ckpt_path=cfg.checkpoint, verbose=True)
 
 
 if __name__ == "__main__":
