@@ -43,6 +43,7 @@ python preprocess.py -d /path/to/data -p
 ```
 
 ## 🔥 Training and testing
+Adapt model type (`RealMotion` or `RealMotion_I`) and datamodule (`av` or `av_stream`)in the `config.yaml` file as well as datapaths in their respective datamodule config files.
 ```
 # Train
 python train.py
@@ -71,5 +72,5 @@ python visualize_inference.py
 
 | Models | minADE1 | minFDE1 | minADE6 | minFDE6 | b-minFDE6 | Checkpoint |
 | :-- | :-: | :-: | :-: | :-: | :--: | :-: |
-| RealMotion-I   |  1.808  |  4.510  |  0.728  |  1.420 | 2.043  | [remotion_i.pth](https://drive.google.com/file/d/1MY4OfoEdoqFTdfDrHqcmo1pAUgUz1Gea/view?usp=drive_link)
-| RealMotion |  1.646  |  4.100  |  0.669  |  1.303  | 1.935 |[remotion.pth](https://drive.google.com/file/d/1qyT0HHTMtpsvGy6YFo-jlp-1b-oNGbMr/view?usp=drive_link)
+| RealMotion-I   |  1.828  |  3.636  |  0.971  |  1.611 | 2.246  | myvalues
+| RealMotion |  1.646  |  4.100  |  0.669  |  1.303  | 1.935 | authorvalues
