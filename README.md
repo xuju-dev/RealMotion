@@ -54,17 +54,17 @@ python eval.py checkpoint=/path/to/ckpt
 python eval.py checkpoint=/path/to/ckpt submit=true
 ```
 
-## Visualize the results
+## 👀 Visualize the results
 Adapt needed filepaths (such as checkpoints, data root, inference output) accordingly.
 ```
 # Initial scenarios
-python  visualize_scenario.py
+python visualize_scenario.py
 
 # Predictions from training
-python  visualize_prediction.py
+python visualize_prediction.py
 
 # Inference predictions
-python  visualize_inference.py
+python visualize_inference.py
 ```
 
 ## ⭐ Results and checkpoints
