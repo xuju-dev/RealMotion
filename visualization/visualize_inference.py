@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from RealMotion.visualization.vis_utils import AV2MapVisualizer, load_scenario_and_map
+from vis_utils import AV2MapVisualizer, load_scenario_and_map
 from av2.datasets.motion_forecasting.viz.scenario_visualization import _plot_actor_tracks
 
 
@@ -21,6 +21,8 @@ viz_output_dir = f"/dev_ws/src/tam_deep_prediction/models/RealMotion/RealMotion/
 os.makedirs(viz_output_dir, exist_ok=True)
 
 top_k = 3
+t_hist = 20
+t_fut = 40
 
 # Read inference results
 preds_df = pd.read_parquet(inference_file_path)
@@ -30,6 +32,7 @@ scenario_ids = preds_df['scenario_id'].unique()
 for scenario_id in scenario_ids:
     # print(f"Visualizing scenario {scenario_id}...")
     scenario_preds = preds_df[preds_df['scenario_id'] == scenario_id]
+    pred_focal = scenario_preds['track_id']
     best_prob = scenario_preds['probability'].max()
     
     sorted_preds = sorted(scenario_preds['probability'], reverse=True)  
@@ -42,12 +45,19 @@ for scenario_id in scenario_ids:
 
     scenario, static_map = load_scenario_and_map(scenario_id, split, dataset_path)
     
-    # Visualizing map
+    ### Visualizing map and agents ###
     AV2MapVisualizer(dataset_path=dataset_path).show_map(ax, split=split, seq_id=scenario_id)
+    _plot_actor_tracks(ax, scenario, timestep=20)  # only history
 
-    # Plot all agents' history and future
-    _plot_actor_tracks(ax, scenario, timestep=60)
+    ### Plot ground truth ###
+    focal_track = next(t for t in scenario.tracks if t.track_id == scenario.focal_track_id)
+    positions = np.array([state.position for state in focal_track.object_states])
+    gt_future = positions[t_hist : t_hist + t_fut]
+    final_gt_pos = gt_future[-1, -1]
 
+    ax.plot(gt_future[:,0], gt_future[:,1], 'r--', label='Ground Truth Future')
+
+    ### Plot predictions ###
     # Plot text box with best probability
     ax.text(
         0.98, 0.98,
@@ -70,7 +80,7 @@ for scenario_id in scenario_ids:
         preds_x = preds['predicted_trajectory_x'].values[0]
         preds_y = preds['predicted_trajectory_y'].values[0]
         
-        ax.plot(preds_x, preds_y, linestyle='--', color='blue', linewidth=1, label=f'{prob:.2f})')
+        ax.plot(preds_x, preds_y, linestyle='--', color='blue', linewidth=1)
 
         # Add probability text at the end of trajectory
         ax.text(
@@ -82,6 +92,8 @@ for scenario_id in scenario_ids:
             verticalalignment='bottom',
             horizontalalignment='right'
         )
+
+    ax.legend()
     viz_save_path = Path(viz_output_dir) / f"new_{scenario_id}inference.png"
-    plt.savefig(viz_save_path, dpi=600, bbox_inches="tight")
+    plt.savefig(viz_save_path, dpi=100, bbox_inches="tight")
     print(f"Saved visualization to {viz_save_path}")

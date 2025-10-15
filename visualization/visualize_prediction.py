@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import torch
 
-from RealMotion.visualization.vis_utils import (
+from vis_utils import (
     AV2MapVisualizer,
     load_model,
     load_scenario_and_map,
