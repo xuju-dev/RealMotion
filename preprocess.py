@@ -19,7 +19,7 @@ def preprocess(args):
     data_root = Path(args.data_root)
 
     for mode in ["train", "val", "test"]:
-        save_dir = data_root / "realmotion_processed_I" / mode
+        save_dir = data_root / "realmotion_processed_I_20" / mode
         extractor = Av2Extractor(save_path=save_dir, mode=mode)
 
         save_dir.mkdir(exist_ok=True, parents=True)

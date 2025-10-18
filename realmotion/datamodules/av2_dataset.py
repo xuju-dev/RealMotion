@@ -16,7 +16,9 @@ class Av2Dataset(Dataset):
         radius: float = 300.0,
         logger=None,
     ):
-        assert split_points[-1] == 50 and num_historical_steps <= 20
+        assert num_historical_steps <= 20
+        assert all(p >= num_historical_steps for p in split_points), \
+            "Split points must be >= num_historical_steps."
         assert split in ['train', 'val', 'test']
         super(Av2Dataset, self).__init__()
         self.data_folder = Path(data_root) / split

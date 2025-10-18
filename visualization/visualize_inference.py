@@ -32,7 +32,6 @@ scenario_ids = preds_df['scenario_id'].unique()
 for scenario_id in scenario_ids:
     # print(f"Visualizing scenario {scenario_id}...")
     scenario_preds = preds_df[preds_df['scenario_id'] == scenario_id]
-    pred_focal = scenario_preds['track_id']
     best_prob = scenario_preds['probability'].max()
     
     sorted_preds = sorted(scenario_preds['probability'], reverse=True)  
@@ -44,6 +43,8 @@ for scenario_id in scenario_ids:
     ax.set_title('{}-{}'.format(scenario_id, 'motion-forecasting'))
 
     scenario, static_map = load_scenario_and_map(scenario_id, split, dataset_path)
+    focal_id = scenario.focal_track_id
+    preds_focal = scenario_preds[scenario_preds['track_id'] == focal_id]
     
     ### Visualizing map and agents ###
     AV2MapVisualizer(dataset_path=dataset_path).show_map(ax, split=split, seq_id=scenario_id)
@@ -53,6 +54,7 @@ for scenario_id in scenario_ids:
     focal_track = next(t for t in scenario.tracks if t.track_id == scenario.focal_track_id)
     positions = np.array([state.position for state in focal_track.object_states])
     gt_future = positions[t_hist : t_hist + t_fut]
+    gt_fut2end = positions[t_hist + t_fut: ]
     final_gt_pos = gt_future[-1, -1]
 
     ax.plot(gt_future[:,0], gt_future[:,1], 'r--', label='Ground Truth Future')
@@ -74,6 +76,21 @@ for scenario_id in scenario_ids:
         )
     )
 
+    # ax.plot(gt_fut2end[:,0], gt_fut2end[:,1], 'g--', label='Ground Truth End')
+    # Get the last observed position of the focal agent
+    last_observed_pos = positions[t_hist - 1]
+    print("Last observed:", positions[t_hist-1])
+    first_pred_x = preds_focal['predicted_trajectory_x'].values[0][0]
+    first_pred_y = preds_focal['predicted_trajectory_y'].values[0][0]
+    
+    print("First predicted:", first_pred_x, first_pred_y)
+    
+    # Check agent speed to estimate time offset
+    speed = np.linalg.norm(positions[t_hist-1] - positions[t_hist-2]) / 0.1  # m/s
+    offset_m = np.linalg.norm(gt_future[0] - [first_pred_x, first_pred_y])
+    print("Approx time offset (s):", offset_m / speed)
+
+
     # Plot top k predicted trajectories for the target agent
     for prob in top_k_preds:
         preds = scenario_preds[scenario_preds['probability'] == prob]
@@ -81,6 +98,10 @@ for scenario_id in scenario_ids:
         preds_y = preds['predicted_trajectory_y'].values[0]
         
         ax.plot(preds_x, preds_y, linestyle='--', color='blue', linewidth=1)
+
+        # last_observed_pos = positions[t_hist - 1]
+        # print("Last observed:", last_observed_pos)
+        # print("First predicted:", preds_x[0], preds_y[0])
 
         # Add probability text at the end of trajectory
         ax.text(
@@ -94,6 +115,6 @@ for scenario_id in scenario_ids:
         )
 
     ax.legend()
-    viz_save_path = Path(viz_output_dir) / f"new_{scenario_id}inference.png"
+    viz_save_path = Path(viz_output_dir) / f"new2_{scenario_id}inference.png"
     plt.savefig(viz_save_path, dpi=100, bbox_inches="tight")
     print(f"Saved visualization to {viz_save_path}")
